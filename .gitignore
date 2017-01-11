@@ -1,0 +1,126 @@
+
+/bin/jq
+
+# === Elixir, Erlang
+/_build
+/deps
+erl_crash.dump
+*.ez
+
+# Ignore sensitive info. in /config dir.
+config/secret*
+secret*
+
+# A few more files used only for development
+# and not important.
+
+tsd-debug.log
+/webrat.log
+/configs/config.ru.rb
+/doc/*
+/templates/*/mustache/*
+/coverage/
+/spec/coverage
+/test/coverage
+/.sass-cache
+/views/skins/jinx/sass/.sass-cache/
+
+# Ignore these files too.
+/tags
+/tmp/
+/log/
+/tmp/
+
+/doc/
+/coverage/
+/spec/coverage
+/test/coverage
+.sass-cache/
+
+
+# Ignore these files too.
+/pid.txt
+/tmp/
+/log/
+
+/db/*.sqlite3
+/db/data.yml
+
+# Ignore VIM swap files.
+*.swp
+*.swo
+
+# Ignore Gedit backup files.
+*.*~
+
+*.pyc
+
+# Ignore Emacs backup files.
+\#*
+
+# Ignore Shoes and Shotgun
+shoes2.run
+shoes-and-a-shotgun.rb
+
+/.bundle/
+/vendor/
+.sass-cache/
+
+*.gem
+*.rbc
+/.config
+/coverage/
+/InstalledFiles
+/pkg/
+/spec/reports/
+/test/tmp/
+/test/version_tmp/
+/tmp/
+
+## Documentation cache and generated files:
+/.yardoc/
+/_yardoc/
+/doc/
+/rdoc/
+
+## Environment normalisation:
+/.bundle/
+/lib/bundler/man/
+
+# for a library or gem, you might want to ignore these files since the code is
+# intended to run in multiple environments; otherwise, check them in:
+# Gemfile.lock
+# .ruby-version
+# .ruby-gemset
+
+# unless supporting rvm < 1.11.0 or doing something fancy, ignore this:
+.rvmrc
+
+/shoes2.run
+/shoes-and-a-shotgun.rb
+
+
+/node_modules/
+/npm-debug.log
+
+/Server/App/file_times.js
+/logs/
+/nginx.conf.compiled
+/.rocks/
+/.bundle
+/conf/.vendor
+/openresty/
+/current
+/nginx.root.conf
+/conf/.bundle/
+/conf/vendor/
+/nginx
+/node_modules
+/Public/tmp
+/Public/vendor/bower
+/Public/bower_components
+/Public/scripts/types
+/nginx
+/luajit
+/lapis
+/progs

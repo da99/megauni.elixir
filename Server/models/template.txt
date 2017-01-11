@@ -1,0 +1,43 @@
+
+
+class {{model_name}}
+
+  include Mongo_Dsl
+
+  enable_timestamps
+  
+  make :body, :anything
+
+  # ==== Associations   ====
+  
+  
+  # ==== Authorizations ====
+ 
+  def allow_to? action, editor # NEW, CREATE
+    case action
+      when :create 
+      
+      when :read
+
+      when :update
+
+      when :delete
+
+    end
+  end
+
+  class << self
+  
+    def create editor, raw_raw_data
+    end
+
+    def update id, editor, raw_raw_data
+    end
+
+  end # == self
+
+  # ==== Accessors ====
+
+  
+
+end # === end {{model_name}}

@@ -1,0 +1,30 @@
+
+[
+
+  "create_user", [ ],
+
+  "desc", ["Link.create"],
+
+  "it"     ,  ["creates a link"],
+  "input"  , [
+    "create_screen_name[]",
+    "create_card[]",
+    "__", [ "LINK | CARD, SCREEN_NAME", "card[].id", "sn[].screen_name" ],
+    1
+  ],
+  "output" , [ "===", [ "read_homepage[]", "ok_val[]", "length[]" ] ],
+
+
+  "it", [ "ignores duplicates"],
+  "input"  , [
+    "create_screen_name[]",
+    "create_card[]",
+    "repeat", [ 3,
+      "Link.create", [ "LINK | CARD, SCREEN_NAME", "card[].id", "sn[].screen_name" ]
+    ], "read_homepage[]", "ok_val[]", "length[]"
+  ],
+  "output" , [ "===", [ 1 ] ]
+
+]
+
+

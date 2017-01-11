@@ -1,0 +1,104 @@
+
+[
+
+  "const", [ "@FAIL_LIMIT", 4 ],
+
+  "create_user", [],
+  "create_screen_name", [],
+  "create_screen_name", [],
+
+  "after_each", ["log_in_reset_all[]"],
+
+  "desc", ["Log_In.attempt"],
+
+  "it",  ["returns the id of the user"],
+  "input", ["__", {
+    "screen_name" : "sn[0].screen_name",
+    "pass"        : "user[].pass",
+    "ip"          : "127.0.0.1"
+  }],
+  "output", [ "~=", ["data", ["ok", {"id" : "user[].id"} ]]],
+
+  "it", ["returns screen_name not found"],
+  "input", ["__", {
+    "screen_name" : "wrong_screen_name",
+    "pass"        : "user[].pass",
+    "ip"          : "127.0.0.1"
+  }],
+  "output", [
+    "~=", [ "data", [ "error", ["user_error", "log_in: screen_name not found"]]]
+  ],
+
+  "it", ["returns user id: fails = @FAIL_LIMIT - 1, success = 1"],
+  "input", [
+    "bad_log_in", [ "@FAIL_LIMIT - 1" ],
+    "good_log_in", []
+  ],
+  "output", ["~=", ["data", ["ok", {"id": "user[].id"} ]]],
+
+
+  "it", ["returns user id: fails = @FAIL_LIMIT - 1, success = 1, fails = 1, success = 1"],
+  "input", [
+    "bad_log_in", [ "@FAIL_LIMIT - 1" ],
+    "good_log_in[]", "bad_log_in[]", "good_log_in[]"
+  ],
+  "output", [
+    "~=", ["data", ["ok", {"id": "user[].id"}]]
+  ],
+
+
+  "it", ["returns lock-out error: @FAIL_LIMIT + 1"],
+  "input", [
+    "bad_log_in", [ "@FAIL_LIMIT + 1" ]
+  ],
+  "output", [
+    "~=", ["data", ["error", ["user_error", "log_in: screen_name locked out"]]]
+  ],
+
+
+  "it", ["returns lock-out error: @FAIL_LIMIT + 1, success = 1"],
+  "input", [
+    "bad_log_in", [ "@FAIL_LIMIT + 1" ],
+    "good_log_in[]"
+  ],
+  "output", [
+    "~=", ["data", ["error", ["user_error", "log_in: screen_name locked out"]]]
+  ],
+
+  "it", ["allows the same IP with different screen names"],
+  "comment", ["This tests to prevent the \"ip\" column from accidently marked as the primary key."],
+  "input", [
+    "bad_log_in", [],
+    "create_screen_name", [],
+    "bad_log_in", []
+  ],
+  "output", [
+    "~=", [
+      "data", ["error", ["user_error","log_in: password no match"]]
+    ]
+  ],
+
+  "it", ["returns user id: fails = @FAIL_LIMIT + 1, 1 success of another screen name"],
+  "input", [
+    "bad_log_in", [ "@FAIL_LIMIT + 1" ],
+    "create_screen_name[]",
+    "good_log_in[]"
+  ],
+  "output", [
+    "~=", [
+      "data", ["ok", {"id": "user[].id"}]
+    ]
+  ],
+
+
+  "it", ["returns user id: fails = @FAIL_LIMIT + 1 that are 25 hours old, 1 success"],
+  "input", [
+    "bad_log_in", [ "@FAIL_LIMIT + 1" ],
+    "log_in_attempts_aged", ["25 hrs"],
+    "good_log_in[]"
+  ],
+  "output", [
+    "~=", ["data", ["ok",{"id": "user[].id"}]]
+  ]
+
+]

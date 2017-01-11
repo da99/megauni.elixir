@@ -1,0 +1,266 @@
+#!/usr/bin/env mksh
+# -*- mksh -*-
+#
+#
+THE_ARGS="$@"
+IS_DEPLOY="$IS_DEPLOY"
+THIS_DIR="$(dirname "$(dirname "$(realpath "$0")")" )"
+PORT="${PORT:-4567}"
+PROGS="$THIS_DIR/progs"
+
+PATH="$PATH:$THIS_DIR/../mksh_setup/bin"
+
+error_files=(
+  ./Public/403.html
+  ./Public/404.html
+  ./Public/500.html
+)
+
+# Array is used.
+# Inspired from: http://stackoverflow.com/a/3811396/841803
+orig_args=("$@")
+action="$1"; shift
+
+IS_DEV="$IS_DEV"
+if [[ -n "$IS_DEV" ]]; then
+  dir="$(pwd)"
+  export JAR="$dir/tmp/cookies.txt"
+  export PID="$dir/tmp/{$PORT}.pid"
+  export LOG="$dir/tmp/log.txt"
+fi
+
+set -u -e -o pipefail
+
+case "$action" in
+
+  help|--help)
+    mksh_setup print-help $0
+    exit 0
+    ;;
+
+  "typescript_files")
+    # === $ typescript_files
+    find ./Public ./specs       \
+      -type f                   \
+      -regex ".*\.ts\$"         \
+      -and -not -regex ".*\.d\.ts$"   \
+      -and -not -regex ".*/vendor/.*" \
+      -printf "%p\n"
+    ;;
+
+  "validate_js")
+    # ===  $ bin/megauni.js  validate_js   file/path/file.js
+
+    cmd="js_setup jshint! "
+    file="$1"
+    shift
+    if echo "$file" | grep "bin/" >/dev/null ; then
+      echo "=== Skipping bin fie: $file" 1>&2
+      exit 0
+    fi
+
+    $cmd "$file"
+    if [[ "$(readlink --canonicalize $file)" == "$(readlink --canonicalize render.js)" ]] ; then
+      $0 compile_mustache
+    fi
+    ;;
+
+  "validate_html")
+    # === $ ... validate_html                     => validates all error html files.
+    # === $ ... validate_html  path/to/file.html
+
+    if [[ -z "$@" ]] ; then
+      for file in ${error_files[@]}
+      do
+        $0 validate_html $file
+      done
+      exit 0
+    fi
+
+    file="$1"
+    shift
+
+    echo -n "=== Validating $file: " 1>&2
+    contents="$(cat $file)"
+    new_contents="$(tidy -config tidy.configs.txt "$file")" || new_contents="fail"
+    if [[ "$new_contents" == "fail"  ]]; then
+      echo -e "${RED}Fail${RESET_COLOR}" 1>&2
+    else
+      if [[ "$contents" == "$new_contents" ]]; then
+        echo "${GREEN}Passed.${RESET_COLOR}" 1>&2
+      else
+        echo "${GREEN}Passed.${RESET_COLOR} Writing new content..." 1>&2
+        echo -e "$new_contents" > $file
+        echo -e "=== HTML valid: $file ${GREEN}Passed${RESET_COLOR} and wrote file."
+      fi
+    fi
+
+    ;;
+
+  "compile_typescript")
+    # ===  $ bin/megauni.js  compile_typescript
+    # ===  $ bin/megauni.js  compile_typescript   file/path/file.ts
+    # === Turns .ts file into temp file for compile_babel
+
+    if [[ -z "$@" ]]; then
+      $0 typescript_files | while read file; do
+        $0 compile_typescript "$file"
+      done
+      exit 0
+    fi # ================================================
+
+    file="$1"
+    shift
+
+    if [[ "$file" == *.d.ts ]]; then
+      echo "=== Skipping compiling typescript definition file: $file" 1>&2
+      exit 0
+    fi
+
+    new_file="$(dirname $file)/$(basename $file .ts).js"
+
+    do_d_ts=""
+    if [[ -f "Public/scripts/$(basename $file .ts).ts" ]]; then
+    do_d_ts=" --declaration "
+    fi
+
+    echo ""
+    echo -e "=== Compiling typescript: $file: "
+    tsc  \
+      ${do_d_ts}       \
+      --noImplicitAny  \
+      --sourceMap      \
+      --out $new_file  \
+      --target ES6     \
+      $file || { \
+      exit_stat=$?;             \
+      echo -e "=== typescript ${RED}failed${RESET_COLOR}: $file" 1>&2; \
+      exit $exit_stat; \
+    }
+
+    tput cuu1; tput el;
+    echo -e "=== Typescript: $file: ${GREEN}Passed${RESET_COLOR}"
+    $0 compile_babel $new_file
+    ;;
+
+
+  "compile_babel")
+    # ===  $ bin/megauni.js  compile_babel   file.js
+    # ==> Creates: file.babel.js, file.babel.js.map
+
+    if [[ -z "$@" ]]; then
+      js_files | while read -r FILE; do
+        $0 compile_babel $FILE
+      done
+    fi
+
+    orig="$1"
+    shift
+
+    if [[ "$orig" == *.babel.js ]]; then
+      echo -e "=== ${BOLD_WHITE}Skipping Babel compile${RESET_COLOR}: $orig"
+      exit 0
+    fi
+
+    if [[  "$(readlink --canonicalize $orig)" == "$(readlink --canonicalize ./render.js)" ]]; then
+      $0 validate_js $orig
+      exit 0
+    fi
+
+
+    dir="$(dirname $orig)"
+    name="$(basename $orig .js)"
+
+    base="$(mktemp -d /tmp/tmp.XXXXXXXXXX.babel.js )/${name}"
+    temp="${base}.js"
+    babel="${base}.babel.js"
+    map="${base}.babel.js.map"
+
+    cp -f "$orig" $temp
+
+    echo -e -n "\n=== Babel $orig: "
+    babel -s true --out-file $babel $temp || {                    \
+      exit_stat=$?;                                               \
+      echo -e "=== Babel ${RED}failed${RESET_COLOR}: $orig" 1>&2; \
+      exit $exit_stat;                                            \
+    }
+
+    echo "${GREEN}Passed${RESET_COLOR}"
+
+    $0 validate_js $babel
+
+    mv -f "$babel"  "$dir/${name}.babel.js"
+    mv -f "$map"    "$dir/${name}.babel.js.map"
+    rm -r /tmp/tmp.*.babel.js
+    ;;
+
+
+  "compile_mustache")
+    # ===  $ bin/megauni.js  compile_mustache
+    # ===  $ bin/megauni.js  compile_mustache    file/path/mustache.mustache
+
+    # === Render all mustache files if:
+    if [[ -z "$@" ]]; then
+      IFS=$' '
+      echo Public/applets/*/*.mustache | while read -r file ; do
+        echo ""
+        $0 compile_mustache $file
+      done
+      exit 0
+    fi
+
+    file="$1"
+    shift
+
+    if echo "$file" | grep "layout.mustache" >/dev/null ; then
+      echo "=== Skipping: $file"
+      exit 0
+    fi
+
+    echo "=== Rendering: $file"
+    meta="$(node render.js $layout $file)"
+    path="$(echo "$meta" | head -n 1)"
+    dir="$(dirname $path)"
+    html="$(echo "$meta" | tail -n +2)"
+
+    if [[ ! -d "$dir" ]]; then
+      mkdir -p "$dir"
+      echo "=== Created dir: ${dir}"
+    fi
+
+    echo "$html" > $path
+    $0 validate_html $path
+    ;;
+
+  "render")
+    # === $ render
+    export IS_DEPLOY="yes"
+    $0 compile_stylus
+    $0 compile_mustache
+    $0 compile_babel
+    $0 validate_json
+    ;;
+
+  *)
+    # === $ bin/megauni bower ...
+    file="$( echo node_modules/*/bin/$action )"
+
+    if [[ -f "$file"  ]]; then
+      $file "$@"
+      exit 0
+    fi
+
+    if [[ -f "progs/bin/$action" ]]; then
+      $action $@
+      exit 0
+    fi
+
+    # === IF: bin/lib file:
+    source "$THIS_DIR/../mksh_setup/bin/source/name-to-func/_.sh"
+    name-to-func "$action"  "$@"
+    ;;
+
+esac # === case $action
+
+
+

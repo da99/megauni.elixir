@@ -1,0 +1,21 @@
+
+-- DOWN
+DROP FUNCTION IF EXISTS `card_id_or_fail`;
+
+-- UP
+
+DELIMITER //
+CREATE FUNCTION card_id_or_fail (
+  SN_ID   INT,
+  CARD_ID INT
+)
+RETURNS INT
+NOT DETERMINISTIC
+READS SQL DATA
+BEGIN
+  IF can_read_card_or_fail(SN_ID, CARD_ID) THEN
+    RETURN CARD_ID;
+  END IF;
+END //
+DELIMITER ;
+
